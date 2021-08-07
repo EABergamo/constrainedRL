@@ -1,5 +1,14 @@
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
+import torch
+import numpy as np
+import torch.nn as nn
+import matplotlib.pyplot as plt
+
+import torch; torch.set_default_dtype(torch.float64)
+import torch.nn as nn
+import torch.optim as optim
+import alegnn.modules.architecturesTime as architTime
 
 def compute_agents_initial_positions(self, n_agents, comm_radius,
                                     min_dist = 0.1, doPrint=False, **kwargs):

@@ -4,16 +4,25 @@ from gym.utils import seeding
 import numpy as np
 from scipy.spatial.distance import cdist
 import utils
+from os import path
+import configparser
+
+
 
 class unlabelledPlanningEnvironment(gym.Env):
-    def __init__(self, n_agents, accel_max, degree, eta, delta, R) -> None:
+    def __init__(self) -> None:
         
-        self.n_agents = n_agents
-        self.accel_max = accel_max
-        self.degree = degree
-        self.eta = eta
-        self.delta = delta
-        self.R = R
+        config_file = path.join(path.dirname(__file__), "unlabelled_planning.cfg")
+        config = configparser.ConfigParser()
+        config.read(config_file)
+        config = config['default']
+        
+        self.n_agents = config['n_agents']
+        self.accel_max = config['accel_max']
+        self.degree = config['degree']
+        self.eta = config['eta']
+        self.delta = config['delta']
+        self.R = config['R']
         
         self.t_samples = 30
 
@@ -21,7 +30,7 @@ class unlabelledPlanningEnvironment(gym.Env):
         # of the neighboors (2*degree and 2*degree, respectively), the
         # position of the closest goals (2 * degree), the node's
         # own agent and velocity (2 * 2) and the corresponding lambda.
-        self.n_features = 2 * (3 * degree + 2) + 1
+        self.n_features = 2 * (3 * self.degree + 2) + 1
                
         # Agent position 
         self.X = np.zeros((self.n_agents, 2))
@@ -36,11 +45,11 @@ class unlabelledPlanningEnvironment(gym.Env):
         # Adjacency graph 
         self.Graph = np.zeros((self.n_agents, 
                                self.n_agents))
-        
-        self.Graph = utils.compute_communication_graph(self.X, self.degree)
-
         # State vector
         self.State = np.zeros((self.n_agents, self.n_features))
+        
+        # Initial conditions
+        self.State[0, :, :], self.Graph[0, :, :], _ = self._get_observation()
 
     def step(self, action):
         """ 
@@ -61,9 +70,11 @@ class unlabelledPlanningEnvironment(gym.Env):
         self.X = self.X + self.V * 0.1 + action ** 0.1 / 2
         
         # Observations
-        observation, curr_graph, min_dist = self._get_observation() # Observations
-        self.State = observation
+        obs, curr_graph, min_dist = self._get_observation() # Observations
+        self.State = obs
         self.Graph = curr_graph
+        
+        observation = [obs, curr_graph]
         
         # Reward
         reward, done = self._get_reward(min_dist)
@@ -134,14 +145,18 @@ class unlabelledPlanningEnvironment(gym.Env):
         
         # Goal position
         self.G = utils.compute_goals_initial_positions(self.X)
-
+        
         # Adjacency graph 
         self.Graph = np.zeros((self.n_agents, 
                                self.n_agents))
-        
-        self.Graph = utils.compute_communication_graph(self.X, self.degree)
-
         # State vector
         self.State = np.zeros((self.n_agents, self.n_features))
+        
+        # Initial conditions
+        self.State[0, :, :], self.Graph[0, :, :], _ = self._get_observation()
+        
+        observation = [self.State[0, :, :], self.Graph[0, :, :]]
+        
+        return observation
             
    
