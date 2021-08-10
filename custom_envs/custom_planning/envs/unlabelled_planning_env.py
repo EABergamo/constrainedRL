@@ -107,7 +107,7 @@ class UnlabelledPlanning(gym.Env):
 
         Returns
         -------
-        observation (np.array (n_agents, n_features))
+        curr_state (np.array (n_agents, n_features)), curr_graph (np.array (n_agents, n_agents)), min_dist (np.array (n_agents))
         """
         degree = self.degree
         curr_state = np.zeros((self.n_features, self.n_agents, ))
@@ -141,6 +141,17 @@ class UnlabelledPlanning(gym.Env):
         return curr_state, curr_graph, min_dist
     
     def reset(self):
+        """ 
+        Responsible for resetting the environment to its initial conditions
+        
+        Parameters
+        ----------
+        N/A
+
+        Returns
+        -------
+        observation (tuple of state (n_agents, n_features)) and curr_graph (np.array (n_agents, n_agents))
+        """
         # Agent position 
         self.X = np.zeros((self.n_agents, 2))
         self.X = utils.compute_agents_initial_positions(self.n_agents, 6)
@@ -160,7 +171,7 @@ class UnlabelledPlanning(gym.Env):
         # Initial conditions
         self.State[0, :, :], self.Graph[0, :, :], _ = self._get_observation()
         
-        observation = [self.State[0, :, :], self.Graph[0, :, :]]
+        observation = (self.State[0, :, :], self.Graph[0, :, :])
         
         return observation
     
