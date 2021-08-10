@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.optim as optim
 import alegnn.modules.architecturesTime as architTime
 
-def compute_agents_initial_positions(self, n_agents, comm_radius,
+def compute_agents_initial_positions(n_agents, comm_radius,
                                     min_dist = 0.1, doPrint=False, **kwargs):
     """ 
     Generates a NumPy array with the 
@@ -32,13 +32,15 @@ def compute_agents_initial_positions(self, n_agents, comm_radius,
     np.array (n_samples x n_agents x 2) 
     """
     
+    zeroTolerance=1e-9
+    
     if (doPrint):
         print('\tComputing initial positions matrix...', end = ' ', flush = True)
     
-    assert min_dist * (1.+self.zeroTolerance) <= comm_radius * (1.-self.zeroTolerance)
+    assert min_dist * (1.+zeroTolerance) <= comm_radius * (1.-zeroTolerance)
     
-    min_dist = min_dist * (1. + self.zeroTolerance)
-    comm_radius = comm_radius * (1. - self.zeroTolerance)
+    min_dist = min_dist * (1. + zeroTolerance)
+    comm_radius = comm_radius * (1. - zeroTolerance)
     
         
     # This is the fixed distance between points in the grid
@@ -84,7 +86,7 @@ def compute_agents_initial_positions(self, n_agents, comm_radius,
             
     return initPos
 
-def compute_goals_initial_positions(self, X_0):
+def compute_goals_initial_positions(X_0):
     """ 
     Generates a NumPy array with the 
     initial x, y position for each of the n_goals
@@ -114,7 +116,7 @@ def compute_goals_initial_positions(self, X_0):
             
     return goal_position
 
-def compute_communication_graph(self, X, degree):
+def compute_communication_graph(X, degree):
         """ 
         Computes the communication graphs S.
         

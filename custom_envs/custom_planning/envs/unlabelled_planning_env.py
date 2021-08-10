@@ -7,30 +7,35 @@ import utils
 from os import path
 import configparser
 
-
-
-class unlabelledPlanningEnvironment(gym.Env):
+class UnlabelledPlanning(gym.Env):
     def __init__(self) -> None:
         
         config_file = path.join(path.dirname(__file__), "unlabelled_planning.cfg")
         config = configparser.ConfigParser()
         config.read(config_file)
-        config = config['default']
+        config = config['DEFAULT']
         
-        self.n_agents = config['n_agents']
-        self.accel_max = config['accel_max']
-        self.degree = config['degree']
-        self.eta = config['eta']
-        self.delta = config['delta']
-        self.R = config['R']
+        self.n_agents = int(config['n_agents'])
+        self.accel_max = float(config['accel_max'])
+        self.degree = int(config['degree'])
+        self.eta = float(config['eta'])
+        self.delta = float(config['delta'])
+        self.R = float(config['R'])
         
         self.t_samples = 30
-
+        
         # Features per node, corresponds to the position and velocity 
         # of the neighboors (2*degree and 2*degree, respectively), the
         # position of the closest goals (2 * degree), the node's
         # own agent and velocity (2 * 2) and the corresponding lambda.
         self.n_features = 2 * (3 * self.degree + 2) + 1
+        
+        self.action_space = spaces.Box(low=-self.accel_max, high=self.accel_max, shape=(2*self.n_agents,),dtype=np.float32)
+
+        self.observation_space = spaces.Box(low=-np.Inf, high=np.Inf, shape=(self.n_agents, self.n_features),
+                                            dtype=np.float32)
+
+    
                
         # Agent position 
         self.X = np.zeros((self.n_agents, 2))
@@ -49,7 +54,7 @@ class unlabelledPlanningEnvironment(gym.Env):
         self.State = np.zeros((self.n_agents, self.n_features))
         
         # Initial conditions
-        self.State[0, :, :], self.Graph[0, :, :], _ = self._get_observation()
+        self.State, self.Graph, _ = self._get_observation()
 
     def step(self, action):
         """ 
@@ -105,7 +110,7 @@ class unlabelledPlanningEnvironment(gym.Env):
         observation (np.array (n_agents, n_features))
         """
         degree = self.degree
-        curr_state = np.zeros((self.n_agents, self.n_features))
+        curr_state = np.zeros((self.n_features, self.n_agents, ))
         
         # Lambda update
         curr_graph = utils.compute_communication_graph(self.X, self.degree) # Communication graph
@@ -128,10 +133,10 @@ class unlabelledPlanningEnvironment(gym.Env):
             distance_matrix = cdist(self.X, self.G)
             distance_to_goals = distance_matrix[agent, :]
             closest_goals_index = np.argsort(distance_to_goals)[0:degree]
-            curr_state[-degree * 2 - 1:-1, agent] = (self.G[closest_goals_index] - np.tile(curr_state[0:2, agent], (self.degree, 1))).flatten()
-            
+            curr_state[-degree * 2 - 1:-1, agent] = (self.G[closest_goals_index] - np.tile(curr_state[0:2, agent], (degree, 1))).flatten()
+                        
             # Lambda
-            curr_state[agent, -1] = np.max(0, self.State[agent, -1] + self.eta / self.t_samples * (min_dist[agent] - self.delta))
+            curr_state[-1, agent] = max(0., self.State[agent, -1] + self.eta / self.t_samples * (min_dist[agent] - self.delta))
             
         return curr_state, curr_graph, min_dist
     
@@ -158,5 +163,11 @@ class unlabelledPlanningEnvironment(gym.Env):
         observation = [self.State[0, :, :], self.Graph[0, :, :]]
         
         return observation
+    
+    def render(self, mode='humans'):
+        pass
+    
+    def close(self):
+        pass
             
    

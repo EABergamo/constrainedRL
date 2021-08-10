@@ -4,13 +4,15 @@ import alegnn.modules.architecturesTime as architTime
 import torch.nn as nn
 import numpy as np
 import gym
+import custom_planning
+import torch
 
 # Environment setup
-env = gym.make('UnlabelledPlanning')
+env = gym.make('CustomPlanning-v0')
 
 # GNN hyperparameters
-state_dic_location = ''
-dimNodeSignals = [2*(3 * 3 + 2)+1, 64]
+state_dic_location = '/home/jcervino/summer-research/unlabelledPlanningML/experiments/flockingGNN-003-20210805130549/savedModels/LocalGNNArchitLast.ckpt'
+dimNodeSignals = [2*(3 * 2 + 2)+1, 64]
 nFilterTaps = [3]
 bias = True
 nonlinearity = nn.Tanh
@@ -24,7 +26,7 @@ localGNN = architTime.LocalGNN_DB(dimNodeSignals,
                                   dimReadout, 
                                   dimEdgeFeatures)
 
-localGNN.load_state_dict(state_dic_location)
+localGNN.load_state_dict(torch.load(state_dic_location, map_location=torch.device('cpu')))
 
 # Optimizer hyperparameter 
 learningRate = 0.0005 
