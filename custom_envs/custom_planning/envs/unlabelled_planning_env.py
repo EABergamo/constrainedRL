@@ -6,6 +6,7 @@ from scipy.spatial.distance import cdist
 import utils
 from os import path
 import configparser
+import sys
 
 class UnlabelledPlanning(gym.Env):
     def __init__(self) -> None:
@@ -51,7 +52,7 @@ class UnlabelledPlanning(gym.Env):
         self.Graph = np.zeros((self.n_agents, 
                                self.n_agents))
         # State vector
-        self.State = np.zeros((self.n_agents, self.n_features))
+        self.State = np.zeros((self.n_features, self.n_agents))
         
         # Initial conditions
         self.State, self.Graph, _ = self._get_observation()
@@ -69,15 +70,15 @@ class UnlabelledPlanning(gym.Env):
         -------
         observation (np.array (n_agents, n_features)), cost (double), done (boolean)
         """
-        
+
         # Position, velocity update
         self.V = self.V + action * 0.1
-        self.X = self.X + self.V * 0.1 + action ** 0.1 / 2
-        
+        self.X = self.X + self.V * 0.1 + action * 0.1**2 / 2
+    
         # Observations
         obs, curr_graph, min_dist = self._get_observation() # Observations
-        self.State = obs
-        self.Graph = curr_graph
+        self.State[:, :] = obs
+        self.Graph[:, :] = curr_graph
         
         observation = [obs, curr_graph]
         
@@ -93,7 +94,9 @@ class UnlabelledPlanning(gym.Env):
         
         done = reward == self.n_agents
         
-        reward = reward + self.State[: , -1] * min_dist
+        reward = reward + self.State[-1, :] * min_dist
+        
+        print(self.State[-1,:])
         
         return reward, done
     
@@ -110,14 +113,13 @@ class UnlabelledPlanning(gym.Env):
         curr_state (np.array (n_agents, n_features)), curr_graph (np.array (n_agents, n_agents)), min_dist (np.array (n_agents))
         """
         degree = self.degree
-        curr_state = np.zeros((self.n_features, self.n_agents, ))
-        
+        curr_state = np.zeros((self.n_features, self.n_agents))
+                
         # Lambda update
         curr_graph = utils.compute_communication_graph(self.X, self.degree) # Communication graph
         distance_matrix = cdist(self.X, self.X) # Minimum distance between agents
-        neighboorhood_distance = distance_matrix * curr_graph  # Position to neighboors only
+        neighboorhood_distance = distance_matrix * curr_graph + np.eye(self.n_agents) * sys.float_info.max # Position to neighboors only
         min_dist = np.min(neighboorhood_distance, axis=1) # Minimum distance to neighboors
-        
         
         for agent in range(0, self.n_agents):
             # Own position, velocity
@@ -134,7 +136,7 @@ class UnlabelledPlanning(gym.Env):
             distance_to_goals = distance_matrix[agent, :]
             closest_goals_index = np.argsort(distance_to_goals)[0:degree]
             curr_state[-degree * 2 - 1:-1, agent] = (self.G[closest_goals_index] - np.tile(curr_state[0:2, agent], (degree, 1))).flatten()
-                        
+             
             # Lambda
             curr_state[-1, agent] = max(0., self.State[agent, -1] + self.eta / self.t_samples * (min_dist[agent] - self.delta))
             
@@ -152,6 +154,7 @@ class UnlabelledPlanning(gym.Env):
         -------
         observation (tuple of state (n_agents, n_features)) and curr_graph (np.array (n_agents, n_agents))
         """
+        
         # Agent position 
         self.X = np.zeros((self.n_agents, 2))
         self.X = utils.compute_agents_initial_positions(self.n_agents, 6)
@@ -161,17 +164,17 @@ class UnlabelledPlanning(gym.Env):
         
         # Goal position
         self.G = utils.compute_goals_initial_positions(self.X)
-        
+
         # Adjacency graph 
         self.Graph = np.zeros((self.n_agents, 
                                self.n_agents))
         # State vector
-        self.State = np.zeros((self.n_agents, self.n_features))
+        self.State = np.zeros((self.n_features, self.n_agents))
         
         # Initial conditions
-        self.State[0, :, :], self.Graph[0, :, :], _ = self._get_observation()
+        self.State, self.Graph, _ = self._get_observation()
         
-        observation = (self.State[0, :, :], self.Graph[0, :, :])
+        observation = (self.State, self.Graph)
         
         return observation
     

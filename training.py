@@ -11,8 +11,9 @@ import torch
 env = gym.make('CustomPlanning-v0')
 
 # GNN hyperparameters
+degree = 2
 state_dic_location = '/home/jcervino/summer-research/unlabelledPlanningML/experiments/flockingGNN-003-20210805130549/savedModels/LocalGNNArchitLast.ckpt'
-dimNodeSignals = [2*(3 * 2 + 2)+1, 64]
+dimNodeSignals = [2*(3 * degree + 2)+1, 64]
 nFilterTaps = [3]
 bias = True
 nonlinearity = nn.Tanh
@@ -40,8 +41,7 @@ optim = optim.Adam(localGNN.parameters(),
 # Simulation hyperparameters
 t_samples = 30
 episodes = 50000
-n_agents = 50
-degree = 3
+n_agents = 3
 n_features = 2 * (3 * degree + 2) + 1
 
 def main(episodes):
@@ -49,21 +49,26 @@ def main(episodes):
     
     for episode in range(episodes):
         
-        # Creates history and saves initial conditions
-        state_hist = np.zeros((t_samples, n_agents, n_features))        
-        graph_hist = np.zeros((t_samples, n_agents, n_agents))
+        # Creates history and saves initial conditions,
+        # the first additional dimension allows to use the GNN code.
+        state_hist = np.zeros((1, t_samples, n_features, n_agents))        
+        graph_hist = np.zeros((1, t_samples, n_agents, n_agents))
         
-        state_hist[0, :, :], graph_hist[0, :, :] = env.reset()
+        state_hist[0, 0, :, :], graph_hist[0, 0, :, :] = env.reset()
         reward_ep = 0
         
         for t in range(1, t_samples):
-            action = localGNN(state_hist[0:t, :, :], graph_hist[0:t, :, :])
-            action = action.numpy()
-            action = action[-1]
+            x = torch.tensor(state_hist[:, 0:t, :, :])
+            S = torch.tensor(graph_hist[:, 0:t, :, :]) 
+
+            with torch.no_grad():
+                action = localGNN(x, S)
+                action = action.numpy()
+                action = action[0, -1].T
             
             state, reward, done, _ = env.step(action)
-            state_hist[t, :, :] = state
-            graph_hist[t, :, :] = env.Graph
+            state_hist[0, t, :, :] = state[0]
+            graph_hist[0, t, :, :] = state[1]
             
             reward_ep = reward_ep + (reward - reward_ep) / t
             
@@ -75,4 +80,6 @@ def main(episodes):
             
     
             
-        
+if __name__ == "__main__":
+    episodes = 5000
+    main(episodes)

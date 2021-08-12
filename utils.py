@@ -93,7 +93,7 @@ def compute_goals_initial_positions(X_0):
     
     Parameters
     ----------
-    X_0 : np.array (n_samples x n_agents x 2) 
+    X_0 : np.array (n_agents x 2) 
         Initial positions of the agents for all samples
     min_dist : double (legacy)
         The minimum distance between each agent
@@ -103,7 +103,7 @@ def compute_goals_initial_positions(X_0):
     np.array (n_samples x n_goals x 2) 
     """
 
-    n_goals = X_0.shape[1]
+    n_goals = X_0.shape[0]
 
     goal_position = np.zeros((n_goals, 2))
 
