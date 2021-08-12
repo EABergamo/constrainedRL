@@ -100,5 +100,5 @@ def main(n_episodes, do_print=True):
     
             
 if __name__ == "__main__":
-    episodes = 5000
+    episodes = 50000
     main(episodes)
