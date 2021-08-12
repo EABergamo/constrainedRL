@@ -116,7 +116,7 @@ class UnlabelledPlanning(gym.Env):
         # Lambda update
         curr_graph = utils.compute_communication_graph(self.X, self.degree) # Communication graph
         distance_matrix = cdist(self.X, self.X) # Minimum distance between agents
-        neighboorhood_distance = distance_matrix * curr_graph + np.eye(self.n_agents) * sys.float_info.max # Position to neighboors only
+        neighboorhood_distance = distance_matrix * curr_graph + np.eye(self.n_agents) * sys.float_info.max # Position to neighboors only, removes zeros from itself
         min_dist = np.min(neighboorhood_distance, axis=1) # Minimum distance to neighboors
         
         for agent in range(0, self.n_agents):

@@ -40,14 +40,16 @@ optim = optim.Adam(localGNN.parameters(),
 
 # Simulation hyperparameters
 t_samples = 30
-episodes = 50000
 n_agents = 3
 n_features = 2 * (3 * degree + 2) + 1
 
-def main(episodes):
+def main(n_episodes, do_print=True):
     reward_history = []
     
-    for episode in range(episodes):
+    if (do_print):
+        print('\tExecuting episodes...', end = ' ', flush = True)
+    
+    for episode in range(n_episodes):
         
         # Creates history and saves initial conditions,
         # the first additional dimension allows to use the GNN code.
@@ -76,8 +78,25 @@ def main(episodes):
                 break
             
         reward_history.append(reward_ep)
+        
+        if do_print:
+            percentageCount = int(100 * episode + 1) / n_episodes
+            if episode == 0:
+                # It's the first one, so just print it
+                print("%3d%%" % percentageCount,
+                    end = '', flush = True)
+            else:
+                # Erase the previous characters
+                print('\b \b' * 4 + "%3d%%" % percentageCount,
+                    end = '', flush = True)
+        
         # TODO: Update GNN
-            
+        
+    # Print
+    if do_print:
+        # Erase the percentage
+        print('\b \b' * 4, end = '', flush = True)
+        print("OK", flush = True)
     
             
 if __name__ == "__main__":
