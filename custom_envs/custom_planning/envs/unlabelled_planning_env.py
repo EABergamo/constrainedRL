@@ -95,9 +95,7 @@ class UnlabelledPlanning(gym.Env):
         done = reward == self.n_agents
         
         reward = reward + self.State[-1, :] * min_dist
-        
-        print(self.State[-1,:])
-        
+                
         return reward, done
     
     def _get_observation(self):
