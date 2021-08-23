@@ -89,12 +89,14 @@ class UnlabelledPlanning(gym.Env):
     
     def _get_reward(self, min_dist):
         # Checks which goals have agents at distance at least R
-        goals_completed = np.min(self.State[-self.degree * 2 - 1:-1, :], axis=0) < self.R
+        distance = np.sqrt(self.State[-self.degree * 2 - 1:-1:2, :]**2 + self.State[-self.degree * 2:-1:2, :]**2)
+
+        goals_completed = np.min(distance, axis=0) < self.R
         reward = np.sum(goals_completed)
         
         done = reward == self.n_agents
         
-        reward = reward + self.State[-1, :] * min_dist
+        reward = reward - np.sum(self.State[-1, :] * min_dist)
                 
         return reward, done
     

@@ -6,6 +6,7 @@ import numpy as np
 import gym
 import custom_planning
 import torch
+import os
 
 # Environment setup
 env = gym.make('CustomPlanning-v0')
@@ -42,6 +43,7 @@ optim = optim.Adam(localGNN.parameters(),
 t_samples = 30
 n_agents = 3
 n_features = 2 * (3 * degree + 2) + 1
+sigma = 0.05
 
 def main(n_episodes, do_print=True):
     reward_history = []
@@ -55,29 +57,29 @@ def main(n_episodes, do_print=True):
         # the first additional dimension allows to use the GNN code.
         state_hist = np.zeros((1, t_samples, n_features, n_agents))        
         graph_hist = np.zeros((1, t_samples, n_agents, n_agents))
+        prob_hist = np.zeros(t_samples)
+        reward_ep = np.zeros(t_samples)
         
         state_hist[0, 0, :, :], graph_hist[0, 0, :, :] = env.reset()
-        reward_ep = 0
+
         
         for t in range(1, t_samples):
             x = torch.tensor(state_hist[:, 0:t, :, :])
             S = torch.tensor(graph_hist[:, 0:t, :, :]) 
 
-            with torch.no_grad():
-                action = localGNN(x, S)
-                action = action.numpy()
-                action = action[0, -1].T
+            action, prob = utils.select_action(localGNN, x, S, sigma)
+            prob_hist[t] = prob
             
             state, reward, done, _ = env.step(action)
             state_hist[0, t, :, :] = state[0]
             graph_hist[0, t, :, :] = state[1]
             
-            reward_ep = reward_ep + (reward - reward_ep) / t
+            reward_ep[t] = reward
             
             if done:
                 break
             
-        reward_history.append(reward_ep)
+        reward_history.append(np.mean(reward_ep))
         
         if do_print:
             percentageCount = int(100 * episode + 1) / n_episodes
@@ -90,7 +92,8 @@ def main(n_episodes, do_print=True):
                 print('\b \b' * 4 + "%3d%%" % percentageCount,
                     end = '', flush = True)
         
-        # TODO: Update GNN
+        # Update GNN
+        utils.update_policy(optim, 1, reward_ep, prob_hist)
         
     # Print
     if do_print:
@@ -98,7 +101,8 @@ def main(n_episodes, do_print=True):
         print('\b \b' * 4, end = '', flush = True)
         print("OK", flush = True)
     
+utils.save_model('constrainedRL', localGNN)
             
 if __name__ == "__main__":
-    episodes = 50000
-    main(episodes)
+    episodes = 10
+    main(episodes, do_print=True)

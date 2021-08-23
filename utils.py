@@ -4,6 +4,10 @@ import torch
 import numpy as np
 import torch.nn as nn
 import matplotlib.pyplot as plt
+from torch.autograd import Variable
+import math
+from collections import deque 
+import os
 
 import torch; torch.set_default_dtype(torch.float64)
 import torch.nn as nn
@@ -137,4 +141,67 @@ def compute_communication_graph(X, degree):
         neigh.fit(X)
         graphMatrix = np.array(neigh.kneighbors_graph(mode='connectivity').todense())    
             
-        return graphMatrix    
+        return graphMatrix
+    
+    
+def normpdf(x, mean, sd):
+    var = float(sd)**2
+    denom = (2*math.pi*var)**.5
+    num = math.exp(-(float(x)-float(mean))**2/(2*var))
+    return num/denom        
+    
+def select_action(policy, x, S, sigma):
+    with torch.no_grad():
+        action = policy(x, S)
+        action = torch.t(action[0, -1])        
+        
+    noise = torch.normal(0, sigma, action.size()) # Generate noise from normal distribution
+    prob = normpdf(torch.sum(noise), 0, sigma * action.numel()) # Get probability
+    prob_sq = prob**2 # Square probability
+    log_prob = math.log(prob_sq) # Take the log of the probability
+    
+    action = action + noise # Add noise to action
+
+    return action.numpy(), log_prob
+
+def update_policy(optimizer, gamma, reward_episode, policy_prob_history):
+    t_samples = reward_episode.shape[0] 
+    
+    for t in range(0, t_samples):
+        R = 0
+        rewards = deque([])
+        prob_history = torch.Tensor(policy_prob_history[t:-1])
+        
+        # Discount future rewards back to the present using gamma
+        for r in reward_episode[t:-1]:
+            R = r + gamma * R
+            rewards.appendleft(R)
+            
+        # Scale rewards
+        rewards = torch.FloatTensor(rewards)
+                    
+        # Calculate loss
+        actions_reward_product = -torch.mul(prob_history, Variable(rewards)) # reward of each action
+        loss = Variable(torch.sum(actions_reward_product, -1), requires_grad=True)
+
+        # Update network weights
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+def save_model(thisFilename, archit):
+    thisFilename = 'constrainedRL' # This is the general name of all related files
+    saveDirRoot = 'experiments' # In this case, relative location
+    saveDir = os.path.join(saveDirRoot, thisFilename) # Dir where to save all the results from each run
+    if not os.path.exists(saveDir):
+        os.makedirs(saveDir)
+    saveModelDir = os.path.join(saveDir,'savedModels')
+    if not os.path.exists(saveDir):
+        os.makedirs(saveModelDir)
+    saveFile = os.path.join(saveModelDir, 'localGNN')
+    torch.save(archit.state_dict(), saveFile+'Archit'+ 'Last'+'.ckpt')
+        
+    
+    
+    
+    
