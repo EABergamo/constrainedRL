@@ -170,13 +170,13 @@ def update_policy(optimizer, gamma, reward_episode, policy_prob_history):
     for t in range(0, t_samples):
         R = 0
         rewards = deque([])
-        prob_history = torch.Tensor(policy_prob_history[t:-1])
+        prob_history = torch.Tensor(policy_prob_history[t::])
         
         # Discount future rewards back to the present using gamma
-        for r in reward_episode[t:-1]:
+        for r in reward_episode[::-1][t::]:
             R = r + gamma * R
             rewards.appendleft(R)
-            
+
         # Scale rewards
         rewards = torch.FloatTensor(rewards)
                     
@@ -196,7 +196,7 @@ def save_model(thisFilename, archit):
     if not os.path.exists(saveDir):
         os.makedirs(saveDir)
     saveModelDir = os.path.join(saveDir,'savedModels')
-    if not os.path.exists(saveDir):
+    if not os.path.exists(saveModelDir):
         os.makedirs(saveModelDir)
     saveFile = os.path.join(saveModelDir, 'localGNN')
     torch.save(archit.state_dict(), saveFile+'Archit'+ 'Last'+'.ckpt')

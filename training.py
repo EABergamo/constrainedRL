@@ -68,7 +68,7 @@ def main(n_episodes, do_print=True):
             S = torch.tensor(graph_hist[:, 0:t, :, :]) 
 
             action, prob = utils.select_action(localGNN, x, S, sigma)
-            prob_hist[t] = prob
+            prob_hist[t - 1] = prob
             
             state, reward, done, _ = env.step(action)
             state_hist[0, t, :, :] = state[0]
@@ -101,8 +101,8 @@ def main(n_episodes, do_print=True):
         print('\b \b' * 4, end = '', flush = True)
         print("OK", flush = True)
     
-utils.save_model('constrainedRL', localGNN)
+    utils.save_model('constrainedRL', localGNN)
             
 if __name__ == "__main__":
-    episodes = 10
+    episodes = 50000
     main(episodes, do_print=True)

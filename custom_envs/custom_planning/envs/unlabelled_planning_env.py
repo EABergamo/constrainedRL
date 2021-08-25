@@ -96,7 +96,7 @@ class UnlabelledPlanning(gym.Env):
         
         done = reward == self.n_agents
         
-        reward = reward - np.sum(self.State[-1, :] * min_dist)
+        reward = reward + np.sum(self.State[-1, :] * (min_dist - self.delta))
                 
         return reward, done
     
