@@ -7,13 +7,14 @@ import gym
 import custom_planning
 import torch
 import os
+import matplotlib.pyplot as plt
 
 # Environment setup
 env = gym.make('CustomPlanning-v0')
 
 # GNN hyperparameters
-degree = 2
-state_dic_location = '/home/jcervino/summer-research/unlabelledPlanningML/experiments/flockingGNN-003-20210805130549/savedModels/LocalGNNArchitLast.ckpt'
+degree = 5
+state_dic_location = '/home/jcervino/summer-research/unlabelledPlanningML/experiments/flockingGNN-012-20210824141834/savedModels/LocalGNNArchitLast.ckpt'
 dimNodeSignals = [2*(3 * degree + 2)+1, 64]
 nFilterTaps = [3]
 bias = True
@@ -41,12 +42,14 @@ optim = optim.Adam(localGNN.parameters(),
 
 # Simulation hyperparameters
 t_samples = 30
-n_agents = 3
+n_agents = 12
 n_features = 2 * (3 * degree + 2) + 1
 sigma = 0.05
 
 def main(n_episodes, do_print=True):
     reward_history = []
+    collision_history = []
+    goals_completed_history = []
     
     if (do_print):
         print('\tExecuting episodes...', end = ' ', flush = True)
@@ -59,6 +62,8 @@ def main(n_episodes, do_print=True):
         graph_hist = np.zeros((1, t_samples, n_agents, n_agents))
         prob_hist = np.zeros(t_samples)
         reward_ep = np.zeros(t_samples)
+        collision_ep = np.zeros(t_samples)
+        goals_completed = 0
         
         state_hist[0, 0, :, :], graph_hist[0, 0, :, :] = env.reset()
 
@@ -73,13 +78,19 @@ def main(n_episodes, do_print=True):
             state, reward, done, _ = env.step(action)
             state_hist[0, t, :, :] = state[0]
             graph_hist[0, t, :, :] = state[1]
+            collision_ep[t] = state[2]
             
             reward_ep[t] = reward
             
             if done:
                 break
             
+            if (t == t_samples - 1):
+                goals_completed = state[3]
+            
         reward_history.append(np.mean(reward_ep))
+        goals_completed_history.append(goals_completed)
+        collision_history.append(np.sum(collision_ep))
         
         if do_print:
             percentageCount = int(100 * episode + 1) / n_episodes
@@ -101,8 +112,26 @@ def main(n_episodes, do_print=True):
         print('\b \b' * 4, end = '', flush = True)
         print("OK", flush = True)
     
-    utils.save_model('constrainedRL', localGNN)
+    today = utils.save_model('constrainedRL', localGNN)
+    
+    return reward_history, collision_history, goals_completed_history, today
             
 if __name__ == "__main__":
-    episodes = 50000
-    main(episodes, do_print=True)
+    episodes = 125000
+    reward, collision, goals, today = main(episodes, do_print=True)
+    
+    figs, axs = plt.subplots(2, figsize=(12, 10))
+    
+    axs[0].plot(np.arange(episodes), goals)
+    axs[0].set_ylabel('Goals Achieved')
+    axs[0].set_xlabel('Episode')
+    axs[0].set_title('Number of Goals Achieved')
+    axs[0].grid()  
+    
+    axs[1].plot(np.arange(episodes), collision)
+    axs[1].set_ylabel('Collisions')
+    axs[1].set_xlabel('Episode')
+    axs[1].set_title('Number of Collisions ($d_{min} \leq 0.75 \delta$)')
+    axs[1].grid()  
+          
+    plt.savefig('/home/jcervino/summer-research/constrainedRL/experiments/constrainedRL/savedModels/lossPlots_' + today)

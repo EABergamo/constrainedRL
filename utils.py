@@ -8,6 +8,7 @@ from torch.autograd import Variable
 import math
 from collections import deque 
 import os
+import datetime
 
 import torch; torch.set_default_dtype(torch.float64)
 import torch.nn as nn
@@ -15,7 +16,7 @@ import torch.optim as optim
 import alegnn.modules.architecturesTime as architTime
 
 def compute_agents_initial_positions(n_agents, comm_radius,
-                                    min_dist = 0.1, doPrint=False, **kwargs):
+                                    min_dist = 1.5, doPrint=False, **kwargs):
     """ 
     Generates a NumPy array with the 
     initial x, y position for each of the n_agents
@@ -151,9 +152,8 @@ def normpdf(x, mean, sd):
     return num/denom        
     
 def select_action(policy, x, S, sigma):
-    with torch.no_grad():
-        action = policy(x, S)
-        action = torch.t(action[0, -1])        
+    action = policy(x, S)
+    action = torch.t(action[0, -1])        
         
     noise = torch.normal(0, sigma, action.size()) # Generate noise from normal distribution
     prob = normpdf(torch.sum(noise), 0, sigma * action.numel()) # Get probability
@@ -195,11 +195,15 @@ def save_model(thisFilename, archit):
     saveDir = os.path.join(saveDirRoot, thisFilename) # Dir where to save all the results from each run
     if not os.path.exists(saveDir):
         os.makedirs(saveDir)
+        
+    today = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     saveModelDir = os.path.join(saveDir,'savedModels')
     if not os.path.exists(saveModelDir):
         os.makedirs(saveModelDir)
     saveFile = os.path.join(saveModelDir, 'localGNN')
-    torch.save(archit.state_dict(), saveFile+'Archit'+ 'Last'+'.ckpt')
+    torch.save(archit.state_dict(), saveFile+'Archit'+ 'Last_'+ today+'.ckpt')
+    
+    return today
         
     
     

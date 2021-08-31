@@ -22,6 +22,7 @@ class UnlabelledPlanning(gym.Env):
         self.eta = float(config['eta'])
         self.delta = float(config['delta'])
         self.R = float(config['R'])
+        self.collision_dist = self.delta * 0.75
         
         self.t_samples = 30
         
@@ -55,7 +56,7 @@ class UnlabelledPlanning(gym.Env):
         self.State = np.zeros((self.n_features, self.n_agents))
         
         # Initial conditions
-        self.State, self.Graph, _ = self._get_observation()
+        self.State, self.Graph, _, _ = self._get_observation()
 
     def step(self, action):
         """ 
@@ -76,14 +77,13 @@ class UnlabelledPlanning(gym.Env):
         self.X = self.X + self.V * 0.1 + action * 0.1**2 / 2
     
         # Observations
-        obs, curr_graph, min_dist = self._get_observation() # Observations
+        obs, curr_graph, min_dist, collision_num = self._get_observation() # Observations
         self.State[:, :] = obs
         self.Graph[:, :] = curr_graph
         
-        observation = [obs, curr_graph]
-        
         # Reward
-        reward, done = self._get_reward(min_dist)
+        reward, goals_completed, done = self._get_reward(min_dist)
+        observation = (obs, curr_graph, collision_num, goals_completed)
         
         return observation, reward, done, {}
     
@@ -92,13 +92,13 @@ class UnlabelledPlanning(gym.Env):
         distance = np.sqrt(self.State[-self.degree * 2 - 1:-1:2, :]**2 + self.State[-self.degree * 2:-1:2, :]**2)
 
         goals_completed = np.min(distance, axis=0) < self.R
-        reward = np.sum(goals_completed)
+        goals_completed = np.sum(goals_completed)
         
-        done = reward == self.n_agents
+        done = goals_completed == self.n_agents
         
-        reward = reward + np.sum(self.State[-1, :] * (min_dist - self.delta))
+        reward = goals_completed + np.sum(self.State[-1, :] * (min_dist - self.delta))
                 
-        return reward, done
+        return reward, goals_completed, done
     
     def _get_observation(self):
         """ 
@@ -118,8 +118,10 @@ class UnlabelledPlanning(gym.Env):
         # Lambda update
         curr_graph = utils.compute_communication_graph(self.X, self.degree) # Communication graph
         distance_matrix = cdist(self.X, self.X) # Minimum distance between agents
-        neighboorhood_distance = distance_matrix * curr_graph + np.eye(self.n_agents) * sys.float_info.max # Position to neighboors only, removes zeros from itself
+        neighboorhood_distance = distance_matrix + np.eye(self.n_agents) * sys.float_info.max # Position to neighboors only, removes zeros from itself
         min_dist = np.min(neighboorhood_distance, axis=1) # Minimum distance to neighboors
+        collision_num = np.sum(neighboorhood_distance <= self.collision_dist)
+        
         
         for agent in range(0, self.n_agents):
             # Own position, velocity
@@ -140,7 +142,7 @@ class UnlabelledPlanning(gym.Env):
             # Lambda
             curr_state[-1, agent] = max(0., self.State[agent, -1] + self.eta / self.t_samples * (min_dist[agent] - self.delta))
             
-        return curr_state, curr_graph, min_dist
+        return curr_state, curr_graph, min_dist, collision_num
     
     def reset(self):
         """ 
@@ -172,9 +174,9 @@ class UnlabelledPlanning(gym.Env):
         self.State = np.zeros((self.n_features, self.n_agents))
         
         # Initial conditions
-        self.State, self.Graph, _ = self._get_observation()
+        self.State, self.Graph, _, _ = self._get_observation()
         
-        observation = (self.State, self.Graph)
+        observation = (self.State, self.Graph, )
         
         return observation
     
